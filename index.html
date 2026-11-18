@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Family history</title>
+<style>
+:root{--ink:#14283a;--teal:#0d6973;--bg:#f8faf8;--card:#fff;--line:#d8e2e2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Georgia,'Times New Roman',serif;line-height:1.6;-webkit-user-select:none;user-select:none}
+header{background:var(--teal);color:#fff;padding:26px 16px}header h1{margin:0 auto;max-width:900px;font-size:1.7rem}
+main{max-width:900px;margin:0 auto;padding:18px 16px 60px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:18px 0}
+h2{font-size:1.35rem;margin:.2em 0 .5em;color:var(--teal)}h3{font-size:1.12rem;margin:1.2em 0 .3em}
+video,img{width:100%;height:auto;border-radius:8px;display:block;background:#000}img{background:#fff}
+table{border-collapse:collapse;width:100%;font-size:.95rem}th,td{border:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}th{background:#e4f3f0}
+.scroll{overflow-x:auto}#msg{padding:30px 16px;text-align:center;font-size:1.1rem}.note{font-size:.9rem;color:#506479}
+</style></head><body>
+<header><h1>Our family history</h1></header>
+<main>
+<p id="msg">Opening&hellip;</p>
+<div id="content" hidden>
+<section><h2>The video</h2><video id="v" controls playsinline controlsList="nodownload noremoteplayback" disablePictureInPicture></video>
+<p class="note">The pictures are illustrations made with AI; no photographs of these ancestors are known.</p></section>
+<section><h2>The family chart</h2><div class="scroll"><img id="c" alt="Family chart" draggable="false"></div></section>
+<section><div class="scroll" id="s"></div></section>
+<p class="note">Shared privately with family. Please do not post this link publicly.</p>
+</div>
+</main>
+<script>
+(async () => {
+  const msg = document.getElementById('msg');
+  const fail = t => { msg.textContent = t; };
+  const m = location.hash.match(/k=([A-Za-z0-9_-]{43})/);
+  if (!m) return fail('This page opens only from the full link you were sent. Please use that link.');
+  try {
+    const raw = Uint8Array.from(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+    const get = async name => {
+      const buf = new Uint8Array(await (await fetch(name + '.enc', { cache: 'no-store' })).arrayBuffer());
+      return crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12), additionalData: new TextEncoder().encode(name) }, key, buf.slice(12));
+    };
+    document.getElementById('s').innerHTML = new TextDecoder().decode(await get('summary'));
+    document.getElementById('c').src = URL.createObjectURL(new Blob([await get('chart')], { type: 'image/png' }));
+    document.getElementById('content').hidden = false;
+    msg.textContent = 'Loading the video\u2026';
+    document.getElementById('v').src = URL.createObjectURL(new Blob([await get('video')], { type: 'video/mp4' }));
+    msg.hidden = true;
+  } catch (e) { fail('This link did not open the page. Please ask for the current link.'); }
+})();
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('dragstart', e => e.preventDefault());
+</script>
+</body></html>
